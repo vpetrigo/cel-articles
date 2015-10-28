@@ -439,4 +439,47 @@ callback-функциях для соответствующего транспо
 , где \emph{destination} - может быть IP-адресом или URL-ссылкой, \emph{port} 
 (для TCP и UDP-сообщений) - порт, который прослушивает стороннее приложение, 
 \emph{payload} - сообщение для отправки.
+
+Для приема TCP и HTTP-пакетов есть две соответствующие callback-функции, которые
+будут вызваны при получении соответствующего сообщения.
+    \begin{minted}{python}
+    cpCallbackTcpReceived(type, ip, srcPort, dstPort, data)
+    cpCallbackHttpReceived(type, ip, srcPort, dstPort, data)
+    \end{minted}
+    
+, где \emph{ip} - IP-адрес отправителя, \emph{srcPort} - порт отправителя, 
+\emph{dstPort} - порт назначения, \emph{data} - данные.
+
+Пример использования функции отправки TCP-сообщения на шлюзе ZMW-GW-ETH-1:
+    \begin{minted}{python}
+    # кнопка на GPIO PA3 
+    buttonPoint = ["button", "PA3", "digital", "buttonF", 1]
+    buttonValues = ["discrete", 2, "up", "down"]
+    # Конфигурация узла
+    celPy.ApplicationName = "MeshWorks"   
+    celPy.DeviceName = "Gateway"
+    celPy.IsSleepyDevice = False
+    celPy.DataCollectionPoints = [buttonPoint]  
+    celPy.DataCollectionValues = [buttonValues] 
+    
+    # строки для передачи состояния кнопки
+    pr = "pressed"
+    rel = "released"
+
+    def buttonF():
+        value = readDigital()
+        # кнопка нажата
+        if (value == 1):
+            tcp.send("192.168.0.1", 5005, pr)
+            return
+        # кнопка отпущена
+        if (value == 0):
+            tcp.send("192.168.0.1", 5005, rel)
+
+    # Стартовая main() функция   
+    def main(): 
+        # Отправка информации на сервер о начале работы шлюза
+        tcp.send("192.168.0.1", 5005, "READY")
+    \end{minted}
+    
 \end{document}
