@@ -481,5 +481,41 @@ callback-функциях для соответствующего транспо
         # Отправка информации на сервер о начале работы шлюза
         tcp.send("192.168.0.1", 5005, "READY")
     \end{minted}
+\subsection{Контроль портов ввода/вывода в различных режимах работы}
+Функции контроля портов ввода/вывода позволяют настроить состояние и направление
+определенного вывода, когда узел находится в спящем или активном режиме.
+Это позволяет оптимизировать энергопотребление узла в различных режимах работы.
+Общая рекомендация при использовании спящих узлов --- на время сна переводить все
+неиспользуемые выводы в режим входа с подтяжкой.
+    \begin{itemize}
+    \item \emph{celPy.setPinSleepState(pin name, cfgPowerDown, gpioOutPowerDown)}
+    - задание конфигурации вывода модуля при нахождении в спящем режиме (например, 
+    переключение на вход с использованием подтягивающего резистора)
+    \item \emph{celPy.setPinWakeState(pin name, cfgPowerDown, gpioOutPowerDown)}
+    - задание конфигурации вывода модуля при нахождении в активном режиме (например,
+    аналоговый вход)
+    \end{itemize}
+
+Возможные значения аргумента \textit{\textbf{cfgPowerDown}}:
+    \begin{itemize}
+    \item \textbf{OUT} - выход
+    \item \textbf{OUT_OD} - выход open-drain (открытый коллектор)
+    \item \textbf{OUT_ALT} - выход, альтернативная функция 
+    \item \textbf{OUT_ALT_OD} - выход, альтернативная функция в режиме «открытый коллектор» (например линия I2C)
+    \item \textbf{ANALOG} - аналоговый вход/выход
+    \item \textbf{IN} - вход (float)
+    \item \textbf{IN_PUD} - вход с поддтяжкой
+    \end{itemize}
     
+Возможные значения аргумента \textit{\textbf{gpioOutPowerDown}}:
+    \begin{itemize}
+    \item \textbf{PULLUP} -- подтяжка к напряжению питания «1»
+    \item \textbf{PULLDOWN} -- подтяжка к уровню земли «0»
+    \end{itemize}
+
+Пример использования:
+    \begin{minted}{python}
+        celPy.setPinSleepState("PA0", "ANALOG", "PULLDOWN")
+        celPy.setPinWakeState("PA6", "OUT", "PULLUP")
+    \end{minted}
 \end{document}
