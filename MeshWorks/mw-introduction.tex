@@ -18,7 +18,7 @@
 
 \section{Введение}
 
-Стремительное развитие приборетает концепция Internet of Things (Интернет Вещей),
+Стремительное развитие приобретает концепция Internet of Things (Интернет Вещей),
 основной идеи которой является объединение бытовых и не только приборов или 
 устройств в единую сеть. и производители очень часто предлагают различные 
 средства для ускорения разработки либо для быстрой интеграции в 
@@ -111,10 +111,10 @@ celPy.IsSleepyDevice = True/False
 \end{minted}
 Переменная \textbf{ApplicationName} отвечает за имя сети. Для того, чтобы другие 
 устройства могли подключиться к такой сети, необходимо задать аналогичное имя в 
-каждом скрипте. Это имя служит для генерации ключа безопасноти, которое используется 
+каждом скрипте. Это имя служит для генерации ключа безопасности, которое используется 
 узлами в процессе подключения. Если необходимо иметь несколько различных сетей, 
 то каждой сети необходимо дать свое имя.
-Переменная \textbf{DeviceName} должна быть опредена либо с помощью ключевого 
+Переменная \textbf{DeviceName} должна быть определена либо с помощью ключевого 
 слова «Gateway», которое задаст роль устройства как координатора, либо с помощью 
 любого другого имени.
 Переменная \textbf{IsSleepyDevice} определяет может ли устройство переходить в 
@@ -624,6 +624,135 @@ Si7013 с I2C-интерфейсом.
 каждый узел передает по радиоканалу на центральный шлюз. Центральный шлюз всю
 полученную информацию передает на локальный или глобальный сервер.
 
+Пример скрипта для узла сбора данных:
+\begin{minted}{python}
+    # Светодиод на выводе PA6 
+    greenLed = ["greenLed", "PA6", "digital", "grLedF", 1]
+    greenValues = ["discrete", 2, "off", "on"]
+    # Светодиод на выводе PA7 
+    redLed = ["redLed", "PA7", "digital", "rdLedF", 1]
+    redValues = ["discrete", 2, "off", "on"]
+      
+    # Data Point для кнопки
+    button = ["button", "PB6", "digital", "buttonF", 1] 
+    bValues = ["discrete", 2, "up", "down"] 
+    
+    prevButtonValue = 0
+    buttonTickCount = 0 
+      
+    def buttonF():
+        value = readDigital()
+        # Периодическая отправка данных
+        # о состоянии выключателя
+        if (buttonTickCount > 30):
+            buttonTickCount = 0
+            sendDataReport(value, "button state")
+        # если значение поменялось 
+        if (value != prevButtonValue):  
+            sendDataReport(value, "button state")
+            # Устанавливаем состояние светодиода
+            # в соответствии с состоянием выключателя
+            celPy.AdjustLocalControlPoint("greenLed", value)    
+        prevButtonValue = value
+        buttonTickCount = (buttonTickCount + 1)
+        
+    # Data Point для датчика температуры
+    tempSensor = ["tempSensor", "PA1", "i2c", "tempMeasFunc", 20]
+    tempSensorValues = ["range", -40, 120]
+    
+    # Чтение температуры с Si7013
+    def tempMeasFunc():
+        value = readI2c(0x41, 0xE3, bigEndian)
+        # Преобразование в градусы Цельсия
+        value = (value * 175)
+        value = (value / 65535)
+        value = (value - 47)
+        sendDataReport(value, "degrees C")
+    
+    celPy.addTickFunction(heartbeatLed, 20) 
+      
+    ledState = 0
+      
+    def heartbeatLed(): 
+        if (ledState == 0): 
+            celPy.AdjustLocalControlPoint("redLed", 1)
+            ledState = 1
+            return
+        if (ledState == 1): 
+            celPy.AdjustLocalControlPoint("redLed", 0)
+            ledState = 0
+      
+    ####################################################
+    # Сетевые настройки
+    celPy.ApplicationName = "MeshWorks"  
+    celPy.DeviceName = "Sensor 1" 
+    celPy.IsSleepyDevice = False
+    celPy.DataCollectionPoints = [button, tempSensor] 
+    celPy.DataCollectionValues = [bValues, tempSensorValues]
+    celPy.ControlPoints = [greenLed, redLed]
+    celPy.ControlValues = [greenValues, redValues] 
+      
+    def main(): 
+        pass
+\end{minted}
+
+Функциональность устройства определятся тремя основными функциями:
+\begin{itemize}
+    \item \emph{buttonF()} -- обрабатывает нажатие на кнопку (выключатель). При 
+    изменении состояния светодиод (лампочка) переключается в соответствующее состояние.
+    Об этом событии также отправляется сообщение на центральный шлюз. В приведенном
+    выше примере также осуществляется отправка информации о текущем состоянии выключателя
+    каждые 30 секунд.
+    \item \emph{tempMeasFunc()} -- считывает данные с датчика
+    Si7013 по интерфейсу I2C, переводит цифровые данные в градусы Цельсия и 
+    отправляет эту информацию на центральный шлюз.
+    \item \emph{heartbeatLed()} -- индикация работоспособности устройства. Переключает
+    состояние вспомогательного красного светодиода каждые 2 секунды.
+\end{itemize}
+
+Пример скрипта для центрального Ethernet-шлюза:
+\begin{minted}{python}
+# Конфигурация шлюза
+celPy.ApplicationName = "MeshWorks"
+celPy.DeviceName = "Gateway"
+celPy.IsSleepyDevice = False
+
+# Обработка сообщений от других сетевых устройств
+def cpCallbackDataPointMessageReceived(deviceName, datapointName, discreteValueString, rangeValue):
+    if (deviceName == "Sensor 1"):
+        if (datapointName == "button"):
+            udpPayload = deviceName
+            udpPayload = (udpPayload + ": button=")
+            udpPayload = (udpPayload + rangeValue)
+            udp.send("192.168.22.225", 5555, udpPayload)
+        if (datapointName == "tempSensor"): 
+            udpPayload = deviceName
+            udpPayload = (udpPayload + ": temp=")
+            udpPayload = (udpPayload + rangeValue)
+            udp.send("192.168.22.225", 5555, udpPayload) 
+    if (deviceName == "Sensor 2"):
+        if (datapointName == "button"):
+            udpPayload = deviceName
+            udpPayload = (udpPayload + ": button=")
+            udpPayload = (udpPayload + rangeValue)
+            udp.send("192.168.22.225", 5555, udpPayload)
+        if (datapointName == "tempSensor"): 
+            udpPayload = deviceName
+            udpPayload = (udpPayload + ": temp=") 
+            udpPayload = (udpPayload + rangeValue)
+            udp.send("192.168.22.225", 5555, udpPayload)  
+   
+def main(): 
+    pass
+
+\end{minted}
+
+Здесь функциональность определяется одной единственной функцией 
+\emph{cpCallbackDataPointMessageReceived}, которая вызывается всякий раз, когда 
+на шлюз поступает информация от других сетевых устройств. В зависимости от значения
+переменной \emph{datapointName} (имя Data Point отправителя) и \emph{deviceName} (имя 
+устройства) формируется соответствующее сообщение и отправляется на указанный адрес
+сервера и порт.
 \section{Заключение}
 
 \end{document}
