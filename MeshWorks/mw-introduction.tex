@@ -1,5 +1,6 @@
 \documentclass[11pt]{article}
 \usepackage{fontspec}
+\usepackage{caption}
 \usepackage{polyglossia}
 \usepackage{wrapfig}
 \setdefaultlanguage{russian}
@@ -21,15 +22,10 @@
 \section{Введение}
 
 Стремительное развитие приобретает концепция Internet of Things (Интернет Вещей),
-основной идеи которой является объединение различных устройств, датчиков, систем
+основной идеей которой является объединение различных устройств, датчиков, систем
 управления и т.д. в единую сеть. В данной статье речь пойдет о платформе MeshWorks 
-компании CEL, позволяющую организовать и настроить беспроводную ZigBee-сеть не 
-имея особых знаний в программировании встраиваемых систем и беспроводного стандарта 
-связи ZigBee. Если стоит задача в короткий срок развернуть систему сбора данных 
-с аналоговых датчиков или устройств с I2C-интерфейсом, систему управления, 
-используя цифровые входы/выходы, то платформа MeshWorks позволит
-это сделать быстро и не вдаваясь в детальные подробности работы с микроконтроллером, 
-периферией и обработкой сетевых событий.
+компании CEL, позволяющей организовать и настроить беспроводную ZigBee-сеть и организовать
+к ней доступ из локальной или глобальной сети.
 
 Для разработчиков доступны как готовые ZigBee-Ethernet- и ZigBee-USB-шлюзы, 
 сенсорные узлы, так и отдельные модули, которые имеют встроенную 
@@ -125,14 +121,15 @@ ZigBee-USB-шлюзы при подключении к компьютеру ил
 (например Wi-Fi-роутер с USB-разъемом, в которые можно загрузить собственное приложение;
 персональный компьютер и т.д.) добавить возможность работы с сетями ZigBee. Шлюзы
 как и модули имеют встроенную прошивку-интерпретатор, которая позволяет загружать
-в них скрипты на языке MeshWorks. Шлюзы как и модули построены на базе микросхем
-EM357/EM3588, поэтому все характеристики, справедливые для модулей и приведенные
-в таблице 1, справедливы и для них.
-\\\\
+в них скрипты на языке MeshWorks. ZigBee-USB-шлюзы построены на базе модулей ZICM3588SPx и 
+ZICM357SPx, поэтому все характеристики, приведенные в таблице 1, справедливы и для них.
+\newpage
 Кроме модулей и шлюзов для тестирования возможностей платформы MeshWorks и разработки
 собственного набора предлагаются готовые сенсорные узлы OpenTether, имеющие в своем 
 составе ряд датчиков и набор периферии:
-\begin{itemize}
+
+\begin{minipage}{.6\textwidth}
+  \begin{itemize}
     \item датчик влажности и температуры Si7013 (с интерфейсом I2C)
     \item акселерометр, гироскоп и компас MPU-9250 (с интерфейсом I2C)
     \item оптический бесконтактный датчик Si1143-M01 (с интерфейсом I2C)
@@ -142,15 +139,12 @@ EM357/EM3588, поэтому все характеристики, справед
     \item сирена
     \item разъем для подключения внешних устройств (аналоговых датчиков, I2C-устройств,
     цифровых входов/выходов)
-\end{itemize}
-
-% OpenTether image
-\begin{wrapfigure}{l}{0.28\textwidth}
-  \begin{center}
-    \includegraphics[width=0.20\textwidth]{sensor_node.png}
-  \end{center}
-  \caption{OpenTether}
-\end{wrapfigure}
+  \end{itemize}
+\end{minipage}
+\begin{minipage}{.2\textwidth}
+        \includegraphics[width=1.2\textwidth]{sensor_node.png}
+        \captionof{figure}{Сенсорный узел OpenTether}
+\end{minipage}
 
 Узлы ZMW-SENSOR-1 могут работать только в сетях, где остальные узлы также работают 
 под управлением прошивки MeshWorks. Данный сенсорный узел дает возможность 
@@ -412,6 +406,7 @@ def main():
     Sensor 2: temp=19
     Sensor 2: button=1
 \end{minted}
+\newpage %% Put summary at the new page
 \section{Заключение}
 Платформа MeshWorks предлагает очень простой интерфейс для быстрой разработки систем
 сбора данных, которые позволяют использовать практически все основные функциональные
@@ -433,8 +428,14 @@ def main():
     \item MeshWorks™ Scripting Language User Guide / California Eastern Laboratories.--
     2015.- 29 стр.
     \item Ethernet Gateways / California Eastern Laboratories. -- 2015.– Режим доступа:
-    \verb{http://meshconnect.cel.com/docs/default-source/brochures/cel_ethernet_gateway_pb.pdf?sfvrsn=4}, свободный
+    \begin{verbatim}
+    http://meshconnect.cel.com/docs/default-source/brochures/
+    cel_ethernet_gateway_pb.pdf?sfvrsn=4}
+    \end{verbatim}
     \item EM35x Mini Modules: ZICM35xSP0 and ZICM35xSP2 / California Eastern Laboratories. -- 2015.– Режим доступа:
-    \verb{http://meshconnect.cel.com/docs/default-source/data-sheets/em35x_mini_modules_ds.pdf?sfvrsn=17}, свободный
+    \begin{verbatim}
+    http://meshconnect.cel.com/docs/default-source/data-sheets/
+    em35x_mini_modules_ds.pdf?sfvrsn=17
+    \end{verbatim}
 \end{enumerate}
 \end{document}
