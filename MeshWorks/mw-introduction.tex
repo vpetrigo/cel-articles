@@ -251,10 +251,11 @@ callback-функциях можно отправлять информацию �
 устройства (цифрового или аналогового) с помощью команды \emph{sendDataReport}.
 
 \section*{Пример работы}
-В качестве примера разберем простую задачу. Имеется две комнаты, температуру в которых 
-необходимо измерить, а также есть два выключателя, которые должны управлять состоянием 
-лампочек. И все данные о температуре и состоянии выключателей должны передаваться на 
-центральный сервер. Примерная структурная схема представлена на рисунке 6.
+В качестве примера разберем простую задачу. Есть комната с лампочкой и выключателем.
+Необходимо осуществлять управление лампочкой по беспроводному каналу связи. Дополнительно
+требуется измерять температуру в комнате. И все данные о температуре и состоянии лампочки
+должны передаваться на центральный сервер. Примерная структурная схема представлена 
+на рисунке 6.
 \begin{figure}[h!]
     \centering
     \includegraphics[scale=0.5]{cel-structure.png}
@@ -270,22 +271,22 @@ Si7013 с I2C-интерфейсом.
 каждый узел передает по радиоканалу на центральный шлюз. Центральный шлюз всю
 полученную информацию передает на локальный или глобальный сервер.
 
-Пример скрипта для узла сбора данных:
+Пример скрипта для беспроводного выключателя со встроенным датчиком температуры:
 \begin{minted}[fontsize=\footnotesize]{python}
     # Светодиод на выводе PA6 
     greenLed = ["greenLed", "PA6", "digital", "grLedF", 1]
     greenValues = ["discrete", 2, "off", "on"]
-    # Светодиод на выводе PA7 
+    # Светодиод на выводе PA7
     redLed = ["redLed", "PA7", "digital", "rdLedF", 1]
     redValues = ["discrete", 2, "off", "on"]
-      
+    
     # Data Point для кнопки
-    button = ["button", "PB6", "digital", "buttonF", 1] 
-    bValues = ["discrete", 2, "up", "down"] 
+    button = ["button", "PB6", "digital", "buttonF", 1]
+    bValues = ["discrete", 2, "up", "down"]
     
     prevButtonValue = 0
-    buttonTickCount = 0 
-      
+    buttonTickCount = 0
+    
     def buttonF():
         value = readDigital()
         # Периодическая отправка данных
@@ -293,15 +294,15 @@ Si7013 с I2C-интерфейсом.
         if (buttonTickCount > 30):
             buttonTickCount = 0
             sendDataReport(value, "button state")
-        # если значение поменялось 
-        if (value != prevButtonValue):  
+        # если значение поменялось
+        if (value != prevButtonValue):
             sendDataReport(value, "button state")
-            # Устанавливаем состояние светодиода
+            # Установка состояние удаленных лампочек
             # в соответствии с состоянием выключателя
-            celPy.AdjustLocalControlPoint("greenLed", value)    
+            celPy.setRemoteVariable("Light1", "light", value)
         prevButtonValue = value
         buttonTickCount = (buttonTickCount + 1)
-        
+    
     # Data Point для датчика температуры
     tempSensor = ["tempSensor", "PA1", "i2c", "tempMeasFunc", 20]
     tempSensorValues = ["range", -40, 120]
@@ -315,37 +316,37 @@ Si7013 с I2C-интерфейсом.
         value = (value - 47)
         sendDataReport(value, "degrees C")
     
-    celPy.addTickFunction(heartbeatLed, 20) 
-      
+    celPy.addTickFunction(heartbeatLed, 20)
+    
     ledState = 0
-      
-    def heartbeatLed(): 
-        if (ledState == 0): 
+    
+    def heartbeatLed():
+        if (ledState == 0):
             celPy.AdjustLocalControlPoint("redLed", 1)
             ledState = 1
             return
-        if (ledState == 1): 
+        if (ledState == 1):
             celPy.AdjustLocalControlPoint("redLed", 0)
             ledState = 0
-      
+    
     ####################################################
     # Сетевые настройки
-    celPy.ApplicationName = "MeshWorks"  
-    celPy.DeviceName = "Sensor 1" 
+    celPy.ApplicationName = "MeshWorks"
+    celPy.DeviceName = "Switch1"
     celPy.IsSleepyDevice = False
-    celPy.DataCollectionPoints = [button, tempSensor] 
+    celPy.DataCollectionPoints = [button, tempSensor]
     celPy.DataCollectionValues = [bValues, tempSensorValues]
     celPy.ControlPoints = [greenLed, redLed]
-    celPy.ControlValues = [greenValues, redValues] 
-      
-    def main(): 
+    celPy.ControlValues = [greenValues, redValues]
+    
+    def main():
         pass
 \end{minted}
 
 Функциональность устройства определятся тремя основными функциями:
 \begin{itemize}
-    \item \emph{buttonF()} -- обрабатывает нажатие на кнопку (выключатель). При 
-    изменении состояния светодиод (лампочка) переключается в соответствующее состояние.
+    \item \emph{buttonF()} -- обрабатывает нажатие на кнопку (выключатель). Отправляет
+    информацию о состоянии выключателя на лампочку «Light1».
     Об этом событии также отправляется сообщение на центральный шлюз. В приведенном
     выше примере также осуществляется отправка информации о текущем состоянии выключателя
     каждые 30 секунд.
@@ -356,41 +357,91 @@ Si7013 с I2C-интерфейсом.
     состояние вспомогательного красного светодиода каждые 2 секунды.
 \end{itemize}
 
+Пример скрипта для лампочки с модулем беспроводного управления:
+\begin{minted}
+    # Светодиод на выводе PA6 
+    greenLed = ["greenLed", "PA6", "digital", "greenLedStatus", 1]
+    greenValues = ["discrete", 2, "off", "on"]
+    
+    # Обработка управляющих сигналов от выключателя
+    def cpCallbackVariableUpdate(variableName, value):
+        if (variableName == "light"):
+            celPy.AdjustLocalControlPoint("greenLed", value)
+            # в соответствии с установленным значением
+            # отправляем состояние лампочки на центральный шлюз
+            if (value == 1):
+                sendDataReportString("on")
+            if (value == 0):
+                sendDataReportString("off")
+    
+    def greenLedStatus():
+        value = readDigital()
+        if (value == 1):
+            sendDataReportString("on")
+    
+    ####################################################
+    # Сетевые настройки
+    celPy.ApplicationName = "MeshWorks"
+    celPy.DeviceName = "Light1"
+    celPy.IsSleepyDevice = False
+    celPy.ControlPoints = [greenLed, redLed]
+    celPy.ControlValues = [greenValues, redValues]
+    
+    def main():
+        pass
+\end{minted}
+
+Каждый раз при поступлении команды на изменение какого-либо параметра от беспроводного
+управляющего устройства (в данном случае выключателя) будет вызвана callback-функция
+\emph{cpCallbackVariableUpdate(variableName, value)}. В данном случае, состояние светодиода
+устанавливается в соответствии с состоянием выключателя и отправляется сообщение 
+"on/off" на центральный шлюз.
+
+
 Пример скрипта для центрального Ethernet-шлюза:
 \begin{minted}[fontsize=\footnotesize]{python}
-# Конфигурация шлюза
-celPy.ApplicationName = "MeshWorks"
-celPy.DeviceName = "Gateway"
-celPy.IsSleepyDevice = False
-
-# Обработка сообщений от других сетевых устройств
-def cpCallbackDataPointMessageReceived(deviceName, datapointName, discreteValueString, rangeValue):
-    if (deviceName == "Sensor 1"):
-        if (datapointName == "button"):
+    # green LED is on GPIO PA6
+    greenLed = ["greenLed", "PA6", "digital", "grLedF", 1]
+    greenValues = ["discrete", 2, "off", "on"]
+    
+    # red LED is on GPIO PA7
+    redLed = ["redLed", "PA7", "digital", "rdLedF", 1]
+    redValues = ["discrete", 2, "off", "on"]
+    
+    # button is on GPIO PA3
+    buttonPoint = ["button", "PA3", "digital", "buttonF", 1]
+    buttonValues = ["discrete", 2, "up", "down"]
+    
+    # Конфигурация шлюза
+    celPy.ApplicationName = "MeshWorks"
+    celPy.DeviceName = "Gateway"
+    celPy.IsSleepyDevice = False
+    celPy.DataCollectionPoints = [buttonPoint]
+    celPy.DataCollectionValues = [buttonValues]
+    celPy.ControlPoints = [greenLed, redLed]
+    celPy.ControlValues = [greenValues, redValues]
+    
+    # Обработка сообщений от других сетевых устройств
+    def cpCallbackDataPointMessageReceived(deviceName, datapointName, discreteValueString, rangeValue):
+        if (deviceName == "Light1"):
             udpPayload = deviceName
-            udpPayload = (udpPayload + ": button=")
-            udpPayload = (udpPayload + rangeValue)
+            udpPayload = (udpPayload + ": ")
+            udpPayload = (udpPayload + discreteValueString)
             udp.send("192.168.22.225", 5555, udpPayload)
-        if (datapointName == "tempSensor"): 
-            udpPayload = deviceName
-            udpPayload = (udpPayload + ": temp=")
-            udpPayload = (udpPayload + rangeValue)
-            udp.send("192.168.22.225", 5555, udpPayload) 
-    if (deviceName == "Sensor 2"):
-        if (datapointName == "button"):
-            udpPayload = deviceName
-            udpPayload = (udpPayload + ": button=")
-            udpPayload = (udpPayload + rangeValue)
-            udp.send("192.168.22.225", 5555, udpPayload)
-        if (datapointName == "tempSensor"): 
-            udpPayload = deviceName
-            udpPayload = (udpPayload + ": temp=") 
-            udpPayload = (udpPayload + rangeValue)
-            udp.send("192.168.22.225", 5555, udpPayload)  
-   
-def main(): 
-    pass
-
+        if (deviceName == "Switch1"):
+            if (datapointName == "button"):
+                udpPayload = deviceName
+                udpPayload = (udpPayload + ": button=")
+                udpPayload = (udpPayload + rangeValue)
+                udp.send("192.168.22.225", 5555, udpPayload)
+            if (datapointName == "tempSensor"):
+                udpPayload = deviceName
+                udpPayload = (udpPayload + ": temp=")
+                udpPayload = (udpPayload + rangeValue)
+                udp.send("192.168.22.225", 5555, udpPayload)
+    
+    def main():
+        pass
 \end{minted}
 
 Здесь функциональность определяется одной единственной функцией 
@@ -403,9 +454,9 @@ def main():
 После включения беспроводной сети и наличии доступа в локальную сеть, на сервер с адресом
 \texttt{192.168.22.225:5555} начнут поступать UDP-сообщения вида:
 \begin{minted}{bash}
-    Sensor 1: temp=28
-    Sensor 2: temp=19
-    Sensor 2: button=1
+    Sensor1: temp=28
+    Sensor1: button=1
+    Light1: on
 \end{minted}
 \newpage %% Put summary at the new page
 \section*{Заключение}
